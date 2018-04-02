@@ -8,11 +8,20 @@ From: rocker/rstudio-stable
     export SINGULARITY_CACHEDIR TUNNEL_HOST
 
 %help
-    # Usage:
-    module load singularity/2.4.5
-    export SINGULARITY_CACHEDIR=$SCRATCH/.singularity
-    /usr/bin/srun -J job-name -p dev -t 01:00:00 --qos normal --mem 4GB --x11=first --pty --unbuffered /bin/bash
-    singularity run -p <container>
+    See https://github.com/vsoch/sh_containers/tree/master/sh_rstudio
+   
+    Generally, you want some rstudio.sh wrapper to:
+        1. load singularity:
+        2. run the container
+
+    E.g.,
+        module load singularity/2.4.5
+        singularity run -p <container>
+
+    And then submit the job:
+        srun -J job-name -p dev -t 01:00:00 --qos normal --mem 4GB --x11=first \
+                                            --pty --unbuffered /bin/bash
+
 
 %post
     # Install nginx - we will use for proxy
@@ -21,9 +30,6 @@ From: rocker/rstudio-stable
     mv /rstudio.conf /etc/nginx/conf.d/rstudio.conf
     # The only way to connect to rserver is via the proxy server
     echo "www-address=127.0.0.1" >> /etc/rstudio/rserver.conf 
-    echo "auth-validate-users=1" >> /etc/rstudio/rserver.conf
-    echo "auth-encrypt-password=1" >> /etc/rstudio/rserver.conf
-    #service nginx restart
 
 %files
     nginx/nginx.conf /nginx.conf
@@ -36,6 +42,6 @@ From: rocker/rstudio-stable
     R_PORT=$(( CLUSTER_PORT + RANDOM%1000 ))
     echo "Step 1: Create a tunnel from your local machine to the cluster"
     echo "ssh -f -L ${CLUSTER_PORT}:${R_HOST}:${R_PORT} ${USER}@${TUNNEL_HOST} sleep 300"
-    CMD="rserver --www-address=${R_HOST} --www-port=${R_PORT}"
+    CMD="rserver --www-address=${R_HOST} --www-port=${R_PORT} --auth-validate-users=1 --auth-encrypt-password=1"
     echo "Step 2: open http://localhost:${CLUSTER_PORT}"
     $CMD

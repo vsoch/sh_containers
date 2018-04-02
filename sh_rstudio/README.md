@@ -52,3 +52,13 @@ srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
 slurmstepd: error: *** STEP 13218794.0 ON sh-101-58 CANCELLED AT 2018-04-02T11:14:20 ***
 [vsochat@sh-ln01 login! /scratch/users/vsochat]$ 
 ```
+
+## Testing
+
+It's helpful to work with the container from an interactive node to test.
+
+```
+srun -J job-name -p dev -t 01:00:00 --qos normal --mem 4GB --x11=first --pty --unbuffered /bin/bash
+module load singularity/2.4.5
+singularity shell -p sh_rstudio
+```
