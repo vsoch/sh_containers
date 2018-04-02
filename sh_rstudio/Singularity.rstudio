@@ -1,0 +1,41 @@
+Bootstrap: docker
+From: rocker/rstudio-stable
+
+
+%environment
+    SINGULARITY_CACHEDIR=$SCRATCH/.singularity
+    TUNNEL_HOST="login.sherlock.stanford.edu"
+    export SINGULARITY_CACHEDIR TUNNEL_HOST
+
+%help
+    # Usage:
+    module load singularity/2.4.5
+    export SINGULARITY_CACHEDIR=$SCRATCH/.singularity
+    /usr/bin/srun -J job-name -p dev -t 01:00:00 --qos normal --mem 4GB --x11=first --pty --unbuffered /bin/bash
+    singularity run -p <container>
+
+%post
+    # Install nginx - we will use for proxy
+    apt-get update && apt-get install -y nginx
+    mv /nginx.conf /etc/nginx/nginx.conf
+    mv /rstudio.conf /etc/nginx/conf.d/rstudio.conf
+    # The only way to connect to rserver is via the proxy server
+    echo "www-address=127.0.0.1" >> /etc/rstudio/rserver.conf 
+    echo "auth-validate-users=1" >> /etc/rstudio/rserver.conf
+    echo "auth-encrypt-password=1" >> /etc/rstudio/rserver.conf
+    #service nginx restart
+
+%files
+    nginx/nginx.conf /nginx.conf
+    nginx/rstudio.conf /rstudio.conf
+
+%runscript
+    cd $SCRATCH
+    CLUSTER_PORT=$(( (UID*RANDOM)%55500 + 9000 ))
+    R_HOST=$(hostname -s)
+    R_PORT=$(( CLUSTER_PORT + RANDOM%1000 ))
+    echo "Step 1: Create a tunnel from your local machine to the cluster"
+    echo "ssh -f -L ${CLUSTER_PORT}:${R_HOST}:${R_PORT} ${USER}@${TUNNEL_HOST} sleep 300"
+    CMD="rserver --www-address=${R_HOST} --www-port=${R_PORT}"
+    echo "Step 2: open http://localhost:${CLUSTER_PORT}"
+    $CMD
